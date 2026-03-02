@@ -8,7 +8,7 @@ dependencies = [
     "asyncpg==0.31.0",
     "httpx[http2]==0.28.1",
     "py-tgcalls==2.2.11",
-    "pyrotgfork==2.2.18",
+    "pyrotgfork==2.2.19",
     "pytgcrypto==1.2.12",
     "telegraph[aio]==2.2.0",
 ]
