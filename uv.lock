@@ -653,15 +653,15 @@ sdist = { url = "https://files.pythonhosted.org/packages/44/66/2c17bae31c9066137
 
 [[package]]
 name = "pyrotgfork"
-version = "2.2.19"
+version = "2.2.20"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pyaes" },
     { name = "pysocks" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/53/0f/80fa88993e4c64d85b1589a0b6b4d5f0679a899eeca9113dc0ea3bd7485c/pyrotgfork-2.2.19.tar.gz", hash = "sha256:bd83259db899228085a23210c465a31a4db7dfab1549047cafb2148f88e62299", size = 526410, upload-time = "2026-03-01T13:31:25.634Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1f/1e/5f15a2358e68c1710225113cbbae77acf90889b558e4e99a9fea5a63a212/pyrotgfork-2.2.20.tar.gz", hash = "sha256:b86fb90b041b0b7993df87498cebe79b075e1753c9793969fa369e18882473bf", size = 530582, upload-time = "2026-03-03T10:12:10.189Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5f/70/69fff43fdf19347b8cd65393704617deb3a5232d0e09630544a497d5714f/pyrotgfork-2.2.19-py3-none-any.whl", hash = "sha256:d43d9d104d5782e3ef9dcee07f8cd23f26b226323f6ecf6cccdef2b86edbf18b", size = 5536333, upload-time = "2026-03-01T13:31:23.548Z" },
+    { url = "https://files.pythonhosted.org/packages/4a/3d/8f5a613d8bd8cdb261da46afef52be74898ef4d9f6325c4b8558f8284b3b/pyrotgfork-2.2.20-py3-none-any.whl", hash = "sha256:63983c97574b31c9e5b5e1e02532c94e6f8aa53db92176ce4aa22b902edf3a1d", size = 5544752, upload-time = "2026-03-03T10:12:07.661Z" },
 ]
 
 [[package]]
@@ -758,7 +758,7 @@ requires-dist = [
     { name = "asyncpg", specifier = "==0.31.0" },
     { name = "httpx", extras = ["http2"], specifier = "==0.28.1" },
     { name = "py-tgcalls", specifier = "==2.2.11" },
-    { name = "pyrotgfork", specifier = "==2.2.19" },
+    { name = "pyrotgfork", specifier = "==2.2.20" },
     { name = "pytgcrypto", specifier = "==1.2.12" },
     { name = "telegraph", extras = ["aio"], specifier = "==2.2.0" },
 ]
