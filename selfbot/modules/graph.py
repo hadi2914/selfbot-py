@@ -73,8 +73,8 @@ class Graph(Module):
             )
             return
 
-        if event.chat.type in (ChatType.PRIVATE, ChatType.BOT) or (
-            event.chat.type not in (ChatType.PRIVATE, ChatType.BOT)
+        if event.chat.type in {ChatType.PRIVATE, ChatType.BOT} or (
+            event.chat.type not in {ChatType.PRIVATE, ChatType.BOT}
             and (
                 event.chat.admin_privileges
                 or (

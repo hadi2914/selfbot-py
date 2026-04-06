@@ -147,7 +147,7 @@ class Debug(Module):
             **{
                 k: v
                 for k, v in media.__dict__.items()
-                if k in args and k not in ("ttl_seconds", "protect_content")
+                if k in args and k not in {"ttl_seconds", "protect_content"}
             },
             disable_notification=True,
             reply_markup=self.ikm(

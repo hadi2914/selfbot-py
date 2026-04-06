@@ -44,7 +44,7 @@ class Download(Module):
                     revoke=2.5,
                 )
                 return
-            elif event.reply_to_message.media not in (
+            elif event.reply_to_message.media not in {
                 MessageMediaType.ANIMATION,
                 MessageMediaType.AUDIO,
                 MessageMediaType.DOCUMENT,
@@ -54,7 +54,7 @@ class Download(Module):
                 MessageMediaType.VIDEO,
                 MessageMediaType.VIDEO_NOTE,
                 MessageMediaType.VOICE,
-            ):
+            }:
                 await self.respond(
                     event,
                     f"<code>Unsupported {html.escape(f'<{event.reply_to_message.media}>')}</code>",

@@ -11,13 +11,13 @@ Object = object()
 
 
 def get_input_peer(peer_id: int, access_hash: int, peer_type: str) -> InputPeer:
-    if peer_type in ("user", "bot"):
+    if peer_type in {"user", "bot"}:
         return InputPeerUser(user_id=peer_id, access_hash=access_hash)
 
     if peer_type == "group":
         return InputPeerChat(chat_id=-peer_id)
 
-    if peer_type in ("channel", "supergroup"):
+    if peer_type in {"channel", "supergroup"}:
         return InputPeerChannel(
             channel_id=get_channel_id(peer_id), access_hash=access_hash
         )
@@ -274,7 +274,7 @@ class PostgreStorage(Storage):
                 f"SELECT {attr} FROM storage.sessions WHERE name = $1;", self.name
             )
 
-        if attr in ("is_bot", "test_mode") and not isinstance(value, bool):
+        if attr in {"is_bot", "test_mode"} and not isinstance(value, bool):
             value = bool(value)
 
         await self.pool.execute(
