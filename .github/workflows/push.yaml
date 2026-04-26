@@ -1,11 +1,16 @@
 name: Push
 
 on:
+  push:
+  pull_request:
   workflow_dispatch:
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+
+    env:
+      DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}
 
     steps:
     - name: Checkout
@@ -14,7 +19,7 @@ jobs:
     - name: Login
       uses: docker/login-action@v3
       with:
-        username: beepsound
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
     - name: Build - Push
@@ -22,4 +27,4 @@ jobs:
       with:
         context: .
         push: true
-        tags: beepsound/selfbot:staging
+        tags: ${{ env.DOCKER_REPO }}:${{ github.ref_name }}
