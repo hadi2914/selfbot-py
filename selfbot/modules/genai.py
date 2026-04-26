@@ -8,7 +8,14 @@ import re
 from httpx import AsyncClient, Timeout
 from pyrogram import filters
 from pyrogram.enums import MessageMediaType, ParseMode
-from pyrogram.types import ChosenInlineResult, InlineQuery, Message, Sticker, Update
+from pyrogram.types import (
+    ChosenInlineResult,
+    InlineQuery,
+    Message,
+    ReplyParameters,
+    Sticker,
+    Update,
+)
 
 from selfbot.listener import handler
 from selfbot.module import Module
