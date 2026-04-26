@@ -44,21 +44,24 @@ class GenAI(Module):
             self.client.unload(self)
             return
 
-        self.models = collections.deque(
-            [
-                "gemini-3-pro-preview",
-                "gemini-3-flash-preview",
-                "gemini-2.5-pro",
-                "gemini-2.5-flash",
-                "gemini-2.5-flash-lite",
-                "gemini-2.5-flash-preview-09-25",
-                "gemini-2.5-flash-lite-preview-09-25",
-                "gemini-2.0-flash",
-                "gemini-2.0-flash-lite",
-                "gemini-2.0-flash-001",
-                "gemini-2.0-flash-lite-001",
-            ]
-        )
+        models = []
+        try:
+            resp = await self.client.http.get(
+                "https://generativelanguage.googleapis.com/v1beta/models",
+                params={"key": self.client.config["GEMINI_API_KEY"]},
+            )
+            resp.raise_for_status()
+        except Exception:
+            models = ["models/gemini-2.5-flash", "models/gemini-2.5-flash-lite"]
+        else:
+            result = resp.json()
+            if "models" in result:
+                for i in result["models"]:
+                    if "generateContent" in i["supportedGenerationMethods"]:
+                        models.append(i["name"])
+
+        self.models = collections.deque(models)
+
         self.data = collections.deque(maxlen=16)
         self.lock = asyncio.Lock()
 
@@ -105,7 +108,7 @@ class GenAI(Module):
         model = self.models[0]
         try:
             resp = await self.google.post(
-                f"/v1beta/models/{model}:generateContent",
+                f"/v1beta/{model}:generateContent",
                 json={"contents": list(self.data), "tools": [{"google_search": {}}]},
             )
             resp.raise_for_status()
