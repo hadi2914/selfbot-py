@@ -28,7 +28,6 @@ class Telegram:
         event: InlineQuery,
         reply_markup: InlineKeyboardMarkup = None,
         message_text: str = "",
-        *args,
         **kwargs,
     ) -> None:
         if not reply_markup:
@@ -40,12 +39,11 @@ class Telegram:
         await event.answer(
             [
                 InlineQueryResultCachedSticker(
-                    sticker_file_id=self.client.config["STICKER_FILE_ID"],
+                    sticker_file_id=self.client.config["sticker_file_id"],
                     reply_markup=reply_markup,
                     input_message_content=InputTextMessageContent(message_text),
                 )
             ],
-            *args,
             **kwargs,
         )
 
@@ -121,7 +119,6 @@ class Telegram:
         message: str | InputMedia,
         reply: bool = False,
         revoke: int = 0,
-        *args,
         **kwargs,
     ) -> Update | int:
         if reply:
@@ -129,10 +126,7 @@ class Telegram:
                 raise AttributeError
 
             event = await event.reply_text(
-                message,
-                reply_parameters=ReplyParameters(message_id=event.id),
-                *args,
-                **kwargs,
+                message, reply_parameters=ReplyParameters(message_id=event.id), **kwargs
             )
         else:
             if isinstance(event, Message):
@@ -146,7 +140,7 @@ class Telegram:
                 else:
                     edit = event.edit_message_media
 
-            event = await edit(message, *args, **kwargs)
+            event = await edit(message, **kwargs)
 
         if revoke:
             if not isinstance(event, Message):
@@ -170,17 +164,15 @@ class Telegram:
         return cid, mid
 
     def ikm(self, rows: list | tuple) -> InlineKeyboardMarkup:
-        if isinstance(rows, tuple):
-            rows = [[rows]]
-        elif isinstance(rows, list):
-            if isinstance(rows[0], tuple):
+        match rows:
+            case tuple():
+                rows = [[rows]]
+            case list() if isinstance(rows[0], tuple):
                 rows = [rows]
-            elif isinstance(rows[0], list):
-                rows = rows
-            else:
+            case list():
+                pass
+            case _:
                 raise TypeError
-        else:
-            raise TypeError
 
         ikb = []
         rgb = {
@@ -191,30 +183,24 @@ class Telegram:
         for row in rows:
             line = []
             for i in row:
-                kwargs, length = {"text": i[0]}, len(i)
-                if 2 < length < 6:
-                    k, v = i[1], i[2]
-                    if k == "copy":
-                        kwargs["copy_text"] = CopyTextButton(text=v)
-                    elif k == "data":
-                        kwargs["callback_data"] = v
-                    elif k == "link":
-                        kwargs["url"] = v
-                    elif k == "user":
-                        kwargs["user_id"] = v
-                    else:
-                        kwargs[k] = v
+                match i:
+                    case (text, "copy", v, *ext):
+                        kwargs = {"text": text, "copy_text": CopyTextButton(text=v)}
+                    case (text, "data", v, *ext):
+                        kwargs = {"text": text, "callback_data": v}
+                    case (text, "link", v, *ext):
+                        kwargs = {"text": text, "url": v}
+                    case (text, "user", v, *ext):
+                        kwargs = {"text": text, "user_id": v}
+                    case (text, k, v, *ext):
+                        kwargs = {"text": text, k: v}
+                    case _:
+                        raise ValueError
 
-                    if length > 3:
-                        if length == 5:
-                            kwargs["icon_custom_emoji_id"] = i[4]
-
-                        if i[3] in rgb:
-                            kwargs["style"] = rgb[i[3]]
-                        else:
-                            kwargs["style"] = ButtonStyle.DEFAULT
-                else:
-                    raise ValueError
+                if ext:
+                    kwargs["style"] = rgb.get(ext[0], ButtonStyle.DEFAULT)
+                    if len(ext) > 1:
+                        kwargs["icon_custom_emoji_id"] = ext[1]
 
                 line.append(InlineKeyboardButton(**kwargs))
 

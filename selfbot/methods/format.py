@@ -57,34 +57,40 @@ class Format:
         return fmt
 
     def fmthelp(self, data: object) -> str:
-        if isinstance(data, dict):
-            res = [
-                f"{' ' * 4}• <b>{k}</b>\n{' ' * 6}<code>{html.escape(v)}</code>"
-                for k, v in data.items()
-            ]
-            return "\n".join(res)
-        elif isinstance(data, list):
-            return "\n".join([f"{' ' * 4}• <b>{i}</b>" for i in data])
+        match data:
+            case dict():
+                res = "\n".join(
+                    [
+                        f"{' ' * 4}• <b>{k}</b>\n{' ' * 6}<code>{html.escape(v)}</code>"
+                        for k, v in data.items()
+                    ]
+                )
+            case list():
+                res = "\n".join([f"{' ' * 4}• <b>{i}</b>" for i in data])
+            case _:
+                res = f"{' ' * 4}<b>{data}</b>"
 
-        return f"{' ' * 4}<b>{data}</b>"
+        return res
 
     def fmtmsg(
         self, head: str, data: object = None, foot: str = "", msgs: str = ""
     ) -> str:
-        body = ""
-        if isinstance(data, dict):
-            padd = max((len(str(k)) for k in data.keys()), default=0)
-            body = "\n".join(
-                f"  <code>{html.escape(str(k)).ljust(padd)}</code> : <code>{html.escape(str(v))}</code>"
-                for k, v in data.items()
-            )
-        elif isinstance(data, (list, set, tuple)):
-            body = "\n".join(
-                f"  <code>{n}</code>. <code>{html.escape(str(item))}</code>"
-                for n, item in enumerate(data, start=1)
-            )
-        elif data:
-            body = f"  <code>{html.escape(str(data))}</code>"
+        match data:
+            case None:
+                body = ""
+            case dict():
+                padd = max((len(str(k)) for k in data.keys()), default=0)
+                body = "\n".join(
+                    f"  <code>{html.escape(str(k)).ljust(padd)}</code> : <code>{html.escape(str(v))}</code>"
+                    for k, v in data.items()
+                )
+            case list() | set() | tuple():
+                body = "\n".join(
+                    f"  <code>{n}</code>. <code>{html.escape(str(item))}</code>"
+                    for n, item in enumerate(data, start=1)
+                )
+            case _:
+                body = f"  <code>{html.escape(str(data))}</code>"
 
         text = [f"<b>{head}</b>"]
         if body:
@@ -99,14 +105,17 @@ class Format:
         return "\n\n".join(text)
 
     def fmtsec(self, sec: object, part: int = 3, human: bool = False) -> str:
-        if isinstance(sec, datetime.timedelta):
-            delta = sec
-        elif isinstance(sec, datetime.datetime):
-            delta = datetime.datetime.now(datetime.UTC) - sec.astimezone(datetime.UTC)
-        elif isinstance(sec, (float, int)):
-            delta = datetime.timedelta(seconds=sec)
-        else:
-            raise TypeError
+        match sec:
+            case datetime.timedelta() as delta:
+                pass
+            case datetime.datetime():
+                delta = datetime.datetime.now(datetime.UTC) - sec.astimezone(
+                    datetime.UTC
+                )
+            case int() | float():
+                delta = datetime.timedelta(seconds=sec)
+            case _:
+                raise TypeError
 
         total = int(delta.total_seconds())
         micro = delta.microseconds

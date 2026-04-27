@@ -73,10 +73,10 @@ class Database(abc.ABC):
 
     async def initdb(self) -> None:
         try:
-            self.db = await create_pool(self.config["DATABASE_URL"])
+            self.db = await create_pool(self.config["database_url"])
         except Exception as e:
             self.logger.error(f"{e.__class__.__name__}: {e}")
             raise
 
-        self.config.pop("DATABASE_URL", None)
+        self.config.pop("database_url", None)
         await self.db.execute(queries)

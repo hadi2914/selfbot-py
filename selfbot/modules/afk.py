@@ -121,7 +121,7 @@ class AFK(Module):
             event._client.invoke(ReadMentions(peer=peer)),
             self.client.bot.send_sticker(
                 event._client.me.id,
-                self.client.config["STICKER_FILE_ID"],
+                self.client.config["sticker_file_id"],
                 disable_notification=True,
                 reply_markup=self.ikm(
                     (

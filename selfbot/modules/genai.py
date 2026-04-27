@@ -39,12 +39,12 @@ class GenAI(Module):
             self.google = AsyncClient(
                 headers={
                     "Content-Type": "application/json",
-                    "x-goog-api-key": self.client.config["GEMINI_API_KEY"],
+                    "x-goog-api-key": self.client.config["gemini_api_key"],
                 },
                 http2=True,
                 timeout=Timeout(timeout=None),
                 follow_redirects=True,
-                base_url="https://generativelanguage.googleapis.com",
+                base_url="https://generativelanguage.googleapis.com/v1beta",
             )
         except Exception as e:
             self.logger.error(f"{e.__class__.__name__}: {e}")
@@ -53,27 +53,28 @@ class GenAI(Module):
 
         models = []
         try:
-            resp = await self.client.http.get(
-                "https://generativelanguage.googleapis.com/v1beta/models",
-                params={"key": self.client.config["GEMINI_API_KEY"]},
+            resp = await self.google.get(
+                "/models", params={"key": self.client.config["gemini_api_key"]}
             )
             resp.raise_for_status()
+            data = resp.json()
+            if "models" in data:
+                for model in data["models"]:
+                    if "generateContent" in model["supportedGenerationMethods"]:
+                        models.append(model["name"])
         except Exception:
+            pass
+
+        if not models:
             models = ["models/gemini-2.5-flash", "models/gemini-2.5-flash-lite"]
-        else:
-            result = resp.json()
-            if "models" in result:
-                for i in result["models"]:
-                    if "generateContent" in i["supportedGenerationMethods"]:
-                        models.append(i["name"])
 
         self.models = collections.deque(models)
 
-        self.data = collections.deque(maxlen=16)
+        self.data = collections.deque(maxlen=64)
         self.lock = asyncio.Lock()
 
     async def on_started(self) -> None:
-        self.client.config.pop("GEMINI_API_KEY", None)
+        self.client.config.pop("gemini_api_key", None)
 
     async def on_stopping(self) -> None:
         if hasattr(self, "google") and not self.google.is_closed:
@@ -85,18 +86,17 @@ class GenAI(Module):
 
     @handler(filters.command("start"), 2)
     async def on_message_bot(self, event: Message) -> None:
-        if (
-            len(event.content.split()) == 2
-            and event.content.split()[1].strip() == "clear"
-        ):
-            resp = await event.reply_sticker(
-                self.client.config["STICKER_FILE_ID"],
-                reply_parameters=ReplyParameters(message_id=event.id),
-                reply_markup=self.ikm(("...", "switch_inline_query", "")),
-            )
-            async with self.lock:
-                self.data.clear()
-            await asyncio.gather(event.delete(), resp.delete())
+        match event.content.split():
+            case [_, "clear"]:
+                resp = await event.reply_sticker(
+                    self.client.config["sticker_file_id"],
+                    reply_parameters=ReplyParameters(message_id=event.id),
+                    reply_markup=self.ikm(("...", "switch_inline_query", "")),
+                )
+                async with self.lock:
+                    self.data.clear()
+
+                await asyncio.gather(event.delete(), resp.delete())
 
     @handler(filters.regex(pattern), 3)
     async def on_inline_query(self, event: InlineQuery) -> None:
@@ -112,10 +112,9 @@ class GenAI(Module):
         if attempt >= len(self.models):
             return "**Error**:\n  `Rate Limited`"
 
-        model = self.models[0]
         try:
             resp = await self.google.post(
-                f"/v1beta/{model}:generateContent",
+                f"/{self.models[0]}:generateContent",
                 json={"contents": list(self.data), "tools": [{"google_search": {}}]},
             )
             resp.raise_for_status()
@@ -124,12 +123,12 @@ class GenAI(Module):
             return await self.gemini(attempt + 1)
 
         try:
-            res = resp.json()
-            if "candidates" not in res or not res["candidates"]:
+            data = resp.json()
+            if "candidates" not in data or not data["candidates"]:
                 self.data.pop()
                 return "**Error**:\n  `Empty Response`"
 
-            candidates = res["candidates"][0]
+            candidates = data["candidates"][0]
             if "content" not in candidates:
                 self.data.pop()
                 return "**Error**:\n  `Empty Content`"
@@ -158,9 +157,10 @@ class GenAI(Module):
         else:
             text = event.content
 
-        (query,) = pattern.match(text).groups()
+        (query,), parts = pattern.match(text).groups(), []
         if query:
             await self.respond(event, f"`{query}`", parse_mode=ParseMode.MARKDOWN)
+            parts.append({"text": query})
         else:
             if isinstance(event, ChosenInlineResult):
                 await self.respond(
@@ -173,82 +173,81 @@ class GenAI(Module):
 
             await self.respond(event, "<code>...</code>")
 
-        parts = []
-        if query:
-            parts.append({"text": query})
-
         if isinstance(event, Message):
-            if event.quote and event.quote.text:
+            if event.quote:
                 parts.append({"text": event.quote.text})
-            elif event.reply_to_message and event.reply_to_message.media:
-                if event.reply_to_message.media in {
-                    MessageMediaType.ANIMATION,
-                    MessageMediaType.AUDIO,
-                    MessageMediaType.DOCUMENT,
-                    MessageMediaType.PHOTO,
-                    MessageMediaType.STICKER,
-                    MessageMediaType.VIDEO,
-                    MessageMediaType.VOICE,
-                }:
-                    rep = event.reply_to_message
-                    obj = getattr(rep, rep.media.value)
-                    if obj.file_size > 32 * (1024**2):
-                        await self.respond(
-                            event,
-                            "<code>Exceeded Size (Limit: 32 MB)</code>",
-                            revoke=2.5,
-                        )
-                        return
 
-                    mime = getattr(obj, "mime_type", "image/jpeg").lower().strip()
-                    if isinstance(obj, Sticker) and obj.is_animated:
-                        rep, mime = obj.thumbs[0].file_id, "image/jpeg"
-                    elif mime.startswith("text"):
-                        mime = "text/plain"
+            rep = event.reply_to_message
+            if rep:
+                if not parts and rep.content and not text.endswith("-i"):
+                    parts.append({"text": rep.content})
 
-                    if not (
-                        mime.startswith(("audio", "image", "text", "video"))
-                        or mime == "application/pdf"
+                match rep.media:
+                    case None | MessageMediaType.WEB_PAGE:
+                        pass
+                    case (
+                        MessageMediaType.ANIMATION
+                        | MessageMediaType.AUDIO
+                        | MessageMediaType.DOCUMENT
+                        | MessageMediaType.PHOTO
+                        | MessageMediaType.STICKER
+                        | MessageMediaType.VIDEO
+                        | MessageMediaType.VOICE
                     ):
+                        obj = getattr(rep, rep.media.value)
+                        if obj.file_size > 32 * (1024**2):
+                            await self.respond(
+                                event,
+                                "<code>Exceeded Size (Limit: 32 MB)</code>",
+                                revoke=2.5,
+                            )
+                            return
+
+                        file = rep
+                        mime = getattr(obj, "mime_type", "image/jpeg").lower().strip()
+                        if isinstance(obj, Sticker) and obj.is_animated:
+                            file, mime = obj.thumbs[0].file_id, "image/jpeg"
+
+                        if mime.startswith("text"):
+                            mime = "text/plain"
+
+                        if not (
+                            mime.startswith(("audio", "image", "text", "video"))
+                            or mime == "application/pdf"
+                        ):
+                            await self.respond(
+                                event,
+                                f"<code>Unsupported '{obj.mime_type}' MIME Type</code>",
+                                revoke=2.5,
+                            )
+                            return
+
+                        parts.append(
+                            {
+                                "inline_data": {
+                                    "mime_type": mime,
+                                    "data": base64.b64encode(
+                                        (
+                                            await event._client.download_media(
+                                                file, in_memory=True
+                                            )
+                                        ).getvalue()
+                                    ).decode("ascii"),
+                                }
+                            }
+                        )
+                        if len(parts) == 1:
+                            parts.append({"text": "Analyze"})
+
+                    case media:
                         await self.respond(
                             event,
-                            f"<code>Unsupported '{obj.mime_type}' MIME Type</code>",
+                            f"<code>Unsupported {html.escape(f'<{media}>')}</code>",
                             revoke=2.5,
                         )
                         return
 
-                    parts.append(
-                        {
-                            "inline_data": {
-                                "mime_type": mime,
-                                "data": base64.b64encode(
-                                    (
-                                        await event._client.download_media(
-                                            rep, in_memory=True
-                                        )
-                                    ).getvalue()
-                                ).decode("ascii"),
-                            }
-                        }
-                    )
-                    if not query:
-                        parts.append({"text": "Analyze"})
-                elif event.reply_to_message.media == MessageMediaType.WEB_PAGE:
-                    parts.append({"text": event.reply_to_message.content})
-                else:
-                    await self.respond(
-                        event,
-                        f"<code>Unsupported {html.escape(f'<{event.reply_to_message.media}>')}</code>",
-                        revoke=2.5,
-                    )
-                    return
-            elif (
-                event.reply_to_message
-                and event.reply_to_message.content
-                and not event.content.endswith("-i")
-            ):
-                parts.append({"text": event.reply_to_message.content})
-            elif not query:
+            if not parts:
                 await self.respond(
                     event,
                     f"<code>Give a Query or {html.escape('<Reply or Quote>')}</code>",
@@ -276,7 +275,7 @@ class GenAI(Module):
 
             await self.respond(
                 event,
-                f"**{query if query else ''}**\n\n{res}\n\n> **{rtt}**",
+                f"**{query if query else ''}**\n\n{res}\n\n> **{rtt}**".lstrip(),
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=self.ikm(ikb),
             )

@@ -15,14 +15,17 @@ class Dispatcher(abc.ABC):
         self.listeners = {}
         super().__init__(**kwargs)
 
-    async def dispatch(self, event: str, *args, **kwargs) -> None:
+    async def dispatch(self, event: str, *args) -> None:
         for listener in self.listeners.get(event, []):
             try:
-                if listener.filters and args and isinstance(args[0], Update):
-                    if not await listener.filters(args[0]._client, args[0]):
+                if listener.filters and args:
+                    arg = args[0]
+                    if isinstance(arg, Update) and not await listener.filters(
+                        arg._client, arg
+                    ):
                         continue
 
-                await listener.func(*args, **kwargs)
+                await listener.func(*args)
             except Exception as e:
                 tb = e.__traceback__
                 while tb and tb.tb_next:

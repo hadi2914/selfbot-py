@@ -36,38 +36,38 @@ class Download(Module):
             event.content
         ).groups()
         update = None
-        if event.reply_to_message:
-            if not event.reply_to_message.media:
-                await self.respond(
-                    event,
-                    f"<code>{html.escape('<MessageMediaType>')} None</code>",
-                    revoke=2.5,
-                )
-                return
-            elif event.reply_to_message.media not in {
-                MessageMediaType.ANIMATION,
-                MessageMediaType.AUDIO,
-                MessageMediaType.DOCUMENT,
-                MessageMediaType.PHOTO,
-                MessageMediaType.STICKER,
-                MessageMediaType.STORY,
-                MessageMediaType.VIDEO,
-                MessageMediaType.VIDEO_NOTE,
-                MessageMediaType.VOICE,
-            }:
-                await self.respond(
-                    event,
-                    f"<code>Unsupported {html.escape(f'<{event.reply_to_message.media}>')}</code>",
-                    revoke=2.5,
-                )
-                return
-            elif event.reply_to_message.media == MessageMediaType.STORY:
-                update = await event._client.get_stories(
-                    event.reply_to_message.story.chat.id,
-                    event.reply_to_message.story.id,
-                )
-            else:
-                update = event.reply_to_message
+        if rep := event.reply_to_message:
+            match rep.media:
+                case None:
+                    await self.respond(
+                        event,
+                        f"<code>{html.escape('<MessageMediaType>')} None</code>",
+                        revoke=2.5,
+                    )
+                    return
+                case MessageMediaType.STORY:
+                    update = await event._client.get_stories(
+                        rep.story.chat.id, rep.story.id
+                    )
+                case (
+                    MessageMediaType.ANIMATION
+                    | MessageMediaType.AUDIO
+                    | MessageMediaType.DOCUMENT
+                    | MessageMediaType.PHOTO
+                    | MessageMediaType.STICKER
+                    | MessageMediaType.STORY
+                    | MessageMediaType.VIDEO
+                    | MessageMediaType.VIDEO_NOTE
+                    | MessageMediaType.VOICE
+                ):
+                    update = rep
+                case _:
+                    await self.respond(
+                        event,
+                        f"<code>Unsupported {html.escape(f'<{rep.media}>')}</code>",
+                        revoke=2.5,
+                    )
+                    return
         else:
             if not chat_id:
                 await self.respond(

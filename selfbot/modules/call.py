@@ -119,40 +119,42 @@ class Call(Module):
             chat_id = chat.id
 
         func, kwargs, text = None, {"chat_id": chat_id}, {"data": {"Chat ID": chat_id}}
-        if action == "join":
-            func = self.client.call.play
-            text["head"] = "Joined Call"
-            if join_as:
-                try:
-                    peer = await event._client.resolve_peer(join_as)
-                except RPCError as e:
-                    await self.respond(
-                        event,
-                        self.fmtmsg(
-                            e.__class__.__name__,
-                            e.MESSAGE.format(value=e.value),
-                            self.fmtsec(now),
-                        ),
-                    )
-                    return
+        match action:
+            case "join":
+                func = self.client.call.play
+                text["head"] = "Joined Call"
+                if join_as:
+                    try:
+                        peer = await event._client.resolve_peer(join_as)
+                    except RPCError as e:
+                        await self.respond(
+                            event,
+                            self.fmtmsg(
+                                e.__class__.__name__,
+                                e.MESSAGE.format(value=e.value),
+                                self.fmtsec(now),
+                            ),
+                        )
+                        return
 
-                join_as = get_channel_id(peer.channel_id)
-                text["data"]["Join as"] = join_as
-                kwargs["config"] = GroupCallConfig(join_as=peer)
+                    join_as = get_channel_id(peer.channel_id)
+                    text["data"]["Join as"] = join_as
+                    kwargs["config"] = GroupCallConfig(join_as=peer)
 
-            text["data"]["Mute"] = bool(mute)
-        elif action == "leave":
-            func = self.client.call.leave_call
-            text["head"] = "Left Call"
-        elif action == "start":
-            func = event._client.create_video_chat
-            text["head"] = "Started Call"
-            if title:
-                kwargs["title"] = title
-                text["data"]["Title"] = title
-        else:
-            func = event._client.discard_group_call
-            text["head"] = "Ended Call"
+                text["data"]["Mute"] = bool(mute)
+            case "leave":
+                func = self.client.call.leave_call
+                text["head"] = "Left Call"
+            case "start":
+                func = event._client.create_video_chat
+                text["head"] = "Started Call"
+                if title:
+                    kwargs["title"] = title
+                    text["data"]["Title"] = title
+
+            case _:
+                func = event._client.discard_group_call
+                text["head"] = "Ended Call"
 
         try:
             await func(**kwargs)
@@ -171,35 +173,36 @@ class Call(Module):
             )
             return
 
-        if action == "join":
-            if mute:
-                await self.client.call.mute(chat_id)
-            else:
-                await self.client.call.unmute(chat_id)
+        match action:
+            case "join":
+                if mute:
+                    await self.client.call.mute(chat_id)
+                else:
+                    await self.client.call.unmute(chat_id)
 
-            await self.client.db.execute(
-                """
-                INSERT INTO call.chats AS c (
+                await self.client.db.execute(
+                    """
+                    INSERT INTO call.chats AS c (
+                        chat_id,
+                        join_as,
+                        mute
+                    )
+                    VALUES ($1, $2, $3)
+                    ON CONFLICT (chat_id)
+                    DO UPDATE SET
+                        join_as = EXCLUDED.join_as,
+                        mute    = EXCLUDED.mute
+                    WHERE
+                        c.join_as IS DISTINCT FROM EXCLUDED.join_as
+                    OR  c.mute    IS DISTINCT FROM EXCLUDED.mute;
+                    """,
                     chat_id,
                     join_as,
-                    mute
+                    bool(mute),
                 )
-                VALUES ($1, $2, $3)
-                ON CONFLICT (chat_id)
-                DO UPDATE SET
-                    join_as = EXCLUDED.join_as,
-                    mute    = EXCLUDED.mute
-                WHERE
-                    c.join_as IS DISTINCT FROM EXCLUDED.join_as
-                OR  c.mute    IS DISTINCT FROM EXCLUDED.mute;
-                """,
-                chat_id,
-                join_as,
-                bool(mute),
-            )
-        elif action == "leave":
-            await self.client.db.execute(
-                "DELETE FROM call.chats WHERE chat_id = $1;", chat_id
-            )
+            case "leave":
+                await self.client.db.execute(
+                    "DELETE FROM call.chats WHERE chat_id = $1;", chat_id
+                )
 
         await self.respond(event, self.fmtmsg(**text, foot=self.fmtsec(now)))

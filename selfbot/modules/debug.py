@@ -173,17 +173,13 @@ class Debug(Module):
 
     @handler(filters.regex(pattern), 4)
     async def on_inline_result(self, event: ChosenInlineResult) -> None:
-        btn, (msg, cmd) = False, await self.msgs(event)
-        if not msg:
-            if len(event.query) <= 1:
-                await cmd.delete()
-                return
+        msg, cmd = await self.msgs(event)
+        if not msg and len(event.query) <= 1:
+            await cmd.delete()
+            return
 
-            btn, msg = True, cmd
-        elif len(event.query) > 1:
-            btn, msg = True, cmd
-
-        await self.execute(msg, event, btn)
+        btn = not msg or len(event.query) > 1
+        await self.execute(msg or cmd, event, btn)
 
     @handler(filters.regex(r"^[01]$"), 5)
     async def on_inline_callback(self, event: CallbackQuery) -> None:
@@ -238,6 +234,7 @@ class Debug(Module):
                 "chat": msg.chat,
                 "user": (msg.reply_to_message or msg).from_user,
                 "event": event,
+                "quote": msg.quote,
             }
         )
         if not isinstance(event, Message):

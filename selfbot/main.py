@@ -15,10 +15,10 @@ for lib in ("pyrogram", "httpx"):
 
 def run() -> None:
     config = {
-        "BOT_TOKEN": os.environ.get("BOT_TOKEN"),
-        "DATABASE_URL": os.environ.get("DATABASE_URL"),
-        "GEMINI_API_KEY": os.environ.get("GEMINI_API_KEY"),
-        "STICKER_FILE_ID": os.environ.get(
+        "bot_token": os.environ.get("BOT_TOKEN"),
+        "database_url": os.environ.get("DATABASE_URL"),
+        "gemini_api_key": os.environ.get("GEMINI_API_KEY"),
+        "sticker_file_id": os.environ.get(
             "STICKER_FILE_ID",
             "CAACAgIAAxkBAAIdeWi1SLWihwZEeyFOk9YM4-mBWJqxAAJOAgACVp29CjD-a22BMgNvHgQ",
         ),
