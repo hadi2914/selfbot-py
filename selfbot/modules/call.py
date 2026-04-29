@@ -152,7 +152,7 @@ class Call(Module):
                     kwargs["title"] = title
                     text["data"]["Title"] = title
 
-            case _:
+            case "end":
                 func = event._client.discard_group_call
                 text["head"] = "Ended Call"
 

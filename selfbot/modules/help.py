@@ -55,9 +55,8 @@ class Help(Module):
 
     @handler(filters.regex(pattern), 2)
     async def on_inline_query(self, event: InlineQuery) -> None:
-        if len(event.query.split("/")) == 2:
-            name = event.query.split("/")[1].strip().lower()
-            if name in self.mods:
+        match event.query.split("/"):
+            case [_, name] if name.lower() in self.mods:
                 await self.answer(
                     event,
                     self.ikm(
@@ -68,58 +67,58 @@ class Help(Module):
                     ),
                     self.mods[name],
                 )
-                return
-
-            names = [
-                f"  {n}. <code>{i}</code>" for n, i in enumerate(self.client.modules, 1)
-            ]
-            await self.answer(
-                event,
-                self.ikm(("Close", "data", b"0")),
-                (
-                    f"<code>No Module with Name '{name}'</code>\n\n"
-                    f"<b>Available Modules:</b>\n{'\n'.join(names)}\n\n"
-                    "Get with Prefix '<code>help/</code>'\n"
-                    "<b>e.g.</b> <code>help/debug</code>"
-                ),
-            )
-            return
-
-        await self.answer(event, self.ikm(self.build()), "<b>Selfbot Modules</b>")
+            case [_, name]:
+                names = [
+                    f"  {n}. <code>{i}</code>"
+                    for n, i in enumerate(self.client.modules, 1)
+                ]
+                await self.answer(
+                    event,
+                    self.ikm(("Close", "data", b"0")),
+                    (
+                        f"<code>No Module with Name '{name}'</code>\n\n"
+                        f"<b>Available Modules:</b>\n{'\n'.join(names)}\n\n"
+                        "Get with Prefix '<code>help/</code>'\n"
+                        "<b>e.g.</b> <code>help/debug</code>"
+                    ),
+                )
+            case [_]:
+                await self.answer(
+                    event, self.ikm(self.build()), "<b>Selfbot Modules</b>"
+                )
 
     @handler(filters.regex(pattern), 4)
     async def on_inline_callback(self, event: CallbackQuery) -> None:
-        act, val = pattern.match(event.data).groups()
-        if act == "info":
-            await event.answer(
-                (
-                    f"Selfbot Version {__version__}\n"
-                    f"\n    {len(self.client.handlers)} Handlers"
-                    f"\n    {len(self.client.listeners)} Listeners"
-                    f"\n    {len(self.client.modules)} Modules"
-                    f"\n\n{len(self.ikbs)} Pages"
-                ),
-                show_alert=True,
-            )
-            return
-
-        if act == "mod":
-            page = self.maps.get(val, 0)
-            await self.respond(
-                event,
-                self.mods[val],
-                reply_markup=self.ikm(
-                    [
-                        ("« Back", "data", f"help/page/{page}".encode()),
-                        ("Close", "data", b"0"),
-                    ]
-                ),
-            )
-            return
-
-        await self.respond(
-            event, "<b>Selfbot Modules</b>", reply_markup=self.ikm(self.build(int(val)))
-        )
+        match pattern.match(event.data).groups():
+            case ["info", _]:
+                await event.answer(
+                    (
+                        f"Selfbot Version {__version__}\n"
+                        f"\n    {len(self.client.handlers)} Handlers"
+                        f"\n    {len(self.client.listeners)} Listeners"
+                        f"\n    {len(self.client.modules)} Modules"
+                        f"\n\n{len(self.ikbs)} Pages"
+                    ),
+                    show_alert=True,
+                )
+            case ["mod", val]:
+                page = self.maps.get(val, 0)
+                await self.respond(
+                    event,
+                    self.mods[val],
+                    reply_markup=self.ikm(
+                        [
+                            ("« Back", "data", f"help/page/{page}".encode()),
+                            ("Close", "data", b"0"),
+                        ]
+                    ),
+                )
+            case ["page", val]:
+                await self.respond(
+                    event,
+                    "<b>Selfbot Modules</b>",
+                    reply_markup=self.ikm(self.build(int(val))),
+                )
 
     def build(self, page: int = 0) -> list:
         idx = max(0, min(page, len(self.ikbs) - 1))
