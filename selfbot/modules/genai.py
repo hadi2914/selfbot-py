@@ -167,7 +167,6 @@ class GenAI(Module):
                     event,
                     "<code>Give a Query with Suffix '!?'</code>",
                     reply_markup=self.ikm(("Close", "data", b"0")),
-                    revoke=2.5,
                 )
                 return
 
