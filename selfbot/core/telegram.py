@@ -128,7 +128,7 @@ class Telegram(abc.ABC):
             api_id=2496,
             api_hash="8da85b0d5bfe62527e5b244c209159c3",
             app_version="2.2 K",
-            device_model="Chrome 143",
+            device_model="Chrome 147",
             workdir="./selfbot/",
             parse_mode=ParseMode.HTML,
             sleep_threshold=25,
