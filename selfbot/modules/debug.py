@@ -155,7 +155,6 @@ class Debug(Module):
                     "Message",
                     "url",
                     f"tg://openmessage?user_id={event.from_user.id}&message_id={event.id}",
-                    "B",
                 )
             ),
         )
