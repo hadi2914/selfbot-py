@@ -178,7 +178,7 @@ class GenAI(Module):
 
             rep = event.reply_to_message
             if rep:
-                if not parts and rep.content and not text.endswith("-i"):
+                if rep.content and not text.endswith("-i"):
                     parts.append({"text": rep.content})
 
                 match rep.media:
